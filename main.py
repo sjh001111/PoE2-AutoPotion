@@ -1,10 +1,9 @@
-import time
+import asyncio
+
 import win32api
 import win32con
 import win32gui
 from pymem import Pymem
-from time import sleep
-import asyncio
 
 # "PathOfExile.exe"+03886DB0
 # 38  18 40 20 208 2c - MaxHP
@@ -22,10 +21,13 @@ offsets = {
     "MaxHP": [0x38, 0x0, 0x80, 0x2A8, 0x1DC],  # 0x1E0 - 4
     "CurMP": [0x38, 0x0, 0x80, 0x2A8, 0x230],
     "MaxMP": [0x38, 0x0, 0x80, 0x2A8, 0x22C],  # 0x230 - 4
+    "CurES": [0x38, 0x0, 0x80, 0x2A8, 0x268],
+    "MaxES": [0x38, 0x0, 0x80, 0x2A8, 0x264],  # 0x268 - 4
 }
 # Heals %
 hp_threshold = 60
 mp_threshold = 15
+es_threshold = 70
 
 
 def get_final_address(pm: Pymem, base_address: int, offsets: list[int]) -> int:
@@ -69,7 +71,6 @@ async def mp_routine():
             mp_percent = (current_mp / max_mp) * 100 if max_mp != 0 else 0
             print(f"MP: {current_mp} / {max_mp} ({mp_percent})")
 
-
             if mp_percent <= mp_threshold:
                 print("Use MP potion")
                 win32api.PostMessage(handle, win32con.WM_KEYDOWN, ord("2"), 0)
@@ -80,10 +81,33 @@ async def mp_routine():
             print(str(e))
 
 
+async def es_routine():
+    while True:
+        try:
+            cures_address = get_final_address(pm, base_address, offsets["CurES"])
+            maxes_address = get_final_address(pm, base_address, offsets["MaxES"])
+
+            current_es = pm.read_int(cures_address)
+            max_es = pm.read_int(maxes_address)
+
+            es_percent = (current_es / max_es) * 100 if max_es != 0 else 0
+            print(f"ES: {current_es} / {max_es} ({es_percent})")
+
+            if es_percent <= es_threshold:
+                print("Use HP potion to restore ES")
+                win32api.PostMessage(handle, win32con.WM_KEYDOWN, ord("1"), 0)
+                win32api.PostMessage(handle, win32con.WM_KEYUP, ord("1"), 0)
+                await asyncio.sleep(0.5)
+            await asyncio.sleep(0.2)
+        except Exception as e:
+            print(str(e))
+
+
 async def main():
     async with asyncio.TaskGroup() as tg:
         tg.create_task(hp_routine())
         tg.create_task(mp_routine())
+        tg.create_task(es_routine())
 
 
 if __name__ == "__main__":
