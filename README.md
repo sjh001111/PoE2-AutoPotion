@@ -1,4 +1,4 @@
-# PoE2-AutoPotion
+# PoE2 AutoPotion
 
 A real-time health management system for Path of Exile 2 that uses memory reading and automated input injection to maintain optimal HP/MP/ES levels during gameplay.
 
